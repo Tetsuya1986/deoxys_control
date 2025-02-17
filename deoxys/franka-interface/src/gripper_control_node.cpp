@@ -2,10 +2,12 @@
 
 #include <atomic>
 #include <iostream>
+#include <iomanip>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
+#include <chrono>
 
 #include <franka/exception.h>
 #include <franka/gripper.h>
@@ -45,12 +47,24 @@ int main(int argc, char **argv) {
   zmq_utils::ZMQPublisher zmq_pub(pub_port);
   zmq_utils::ZMQSubscriber zmq_sub(subscriber_ip, sub_port);
 
+  // Create log file name
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+  std::tm utc_tm = *std::gmtime(&now_time_t);
+  utc_tm.tm_hour += 9;
+  mktime(&utc_tm);
+  std::stringstream ss;
+  ss << std::put_time(&utc_tm, "%Y%m%d_%H%M%S");
+  std::string log_name = "logs/" + ss.str() + "_gripper.log";
+  std::cout << log_name << std::endl;
+
   // Initialize robot
   log_utils::initialize_logger(
       config["GRIPPER_LOGGER"]["CONSOLE"]["LOGGER_NAME"].as<std::string>(),
       config["GRIPPER_LOGGER"]["CONSOLE"]["LEVEL"].as<std::string>(),
       config["GRIPPER_LOGGER"]["CONSOLE"]["USE"].as<bool>(),
-      config["GRIPPER_LOGGER"]["FILE"]["LOGGER_NAME"].as<std::string>(),
+      // config["GRIPPER_LOGGER"]["FILE"]["LOGGER_NAME"].as<std::string>(),
+      log_name,
       config["GRIPPER_LOGGER"]["FILE"]["LEVEL"].as<std::string>(),
       config["GRIPPER_LOGGER"]["FILE"]["USE"].as<bool>());
 
@@ -76,6 +90,8 @@ int main(int argc, char **argv) {
 
     // Log information about current gripper control frequency
     gripper_logger->info("Gripper state publisher: {0}Hz", pub_rate);
+    gripper_logger->debug("width, max_width, is_grasped, temperature");
+
     // Initialize gripper subscribing / publishing thread,
     std::thread gripper_pub_thread([&]() {
       franka::GripperState current_gripper_state;
@@ -86,12 +102,21 @@ int main(int argc, char **argv) {
           gripper_state.mutex.unlock();
         }
 
+	gripper_logger->debug(
+		      "{0}, {1}, {2}, {3}",
+		      gripper_state.state.width,
+		      gripper_state.state.max_width,
+		      static_cast<int>(gripper_state.state.is_grasped),
+		      gripper_state.state.temperature
+        );
+
         FrankaGripperStateMessage gripper_state_msg;
         gripper_state_utils.LoadGripperStateToMsg(current_gripper_state,
                                                   gripper_state_msg);
         std::string serialized_gripper_state_msg;
         gripper_state_msg.SerializeToString(&serialized_gripper_state_msg);
         zmq_pub.send(serialized_gripper_state_msg);
+
         std::this_thread::sleep_for(
             std::chrono::milliseconds(static_cast<int>(1. / pub_rate * 1000)));
       }

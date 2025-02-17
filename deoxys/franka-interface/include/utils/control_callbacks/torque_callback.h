@@ -75,7 +75,24 @@ CreateTorqueFromCartesianSpaceCallback(
         std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
     // global_handler->logger->debug("{0} microseconds" , time.count());
-
+    global_handler->logger->debug(
+	  "{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}",
+	  fmt::join(goal_state_info->pos_EE_in_base_frame, ","),
+	  fmt::join(robot_state.O_T_EE, ","),
+	  fmt::join(robot_state.O_T_EE_c, ","),
+	  fmt::join(robot_state.O_T_EE_d, ","),
+	  fmt::join(robot_state.F_T_EE, ","),
+	  robot_state.m_load,
+	  fmt::join(robot_state.tau_J, ","),
+	  fmt::join(robot_state.tau_J_d, ","),
+          fmt::join(robot_state.q, ","),
+	  fmt::join(robot_state.q_d, ","),
+	  fmt::join(robot_state.dq, ","),
+	  fmt::join(robot_state.dq_d, ","),
+	  fmt::join(robot_state.joint_contact, ","),
+	  fmt::join(robot_state.cartesian_contact, ",")
+      );
+		    
     return tau_d_rate_limited;
   };
 }

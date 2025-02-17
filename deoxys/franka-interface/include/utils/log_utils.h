@@ -22,7 +22,7 @@ initialize_logger(std::string logger_name = "deoxys_logger",
   console_sink->set_level(spdlog::level::from_str(console_level));
   console_sink->set_pattern("[%^%l - %n%$] %v %!");
   auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-      log_filename, 1048576, 5, false);
+      log_filename, 2147483648, 5, false);
   file_sink->set_level(spdlog::level::from_str(file_level));
   std::vector<spdlog::sink_ptr> sinks;
 

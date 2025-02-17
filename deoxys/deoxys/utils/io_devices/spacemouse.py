@@ -120,8 +120,8 @@ class SpaceMouse:
         self.pos_sensitivity = pos_sensitivity
         self.rot_sensitivity = rot_sensitivity
 
-        print("Manufacturer: %s" % self.device.get_manufacturer_string())
-        print("Product: %s" % self.device.get_product_string())
+#        print("Manufacturer: %s" % self.device.get_manufacturer_string())
+#        print("Product: %s" % self.device.get_product_string())
 
         # 6-DOF variables
         self.x, self.y, self.z = 0, 0, 0
@@ -201,7 +201,6 @@ class SpaceMouse:
         drot3 = rotation_matrix(angle=yaw, direction=[0, 0, 1.0], point=None)[:3, :3]
 
         self.rotation = self.rotation.dot(drot1.dot(drot2.dot(drot3)))
-
         return dict(
             dpos=dpos,
             rotation=self.rotation,
@@ -218,27 +217,17 @@ class SpaceMouse:
         while True:
             d = self.device.read(13)
             if d is not None and self._enabled:
-
-                if d[0] == 1:  ## readings from 6-DoF sensor
+                if d[0] == 1:  ## process translational value
                     self.y = convert(d[1], d[2])
                     self.x = convert(d[3], d[4])
                     self.z = convert(d[5], d[6]) * -1.0
 
-                    self.roll = convert(d[7], d[8])
-                    self.pitch = convert(d[9], d[10])
-                    self.yaw = convert(d[11], d[12])
-
-                    self._control = [
-                        self.x,
-                        self.y,
-                        self.z,
-                        self.roll,
-                        self.pitch,
-                        self.yaw,
-                    ]
+                elif d[0] == 2:  ## process rotational value
+                    self.roll = convert(d[1], d[2])
+                    self.pitch = convert(d[3], d[4])
+                    self.yaw = convert(d[5], d[6])
 
                 elif d[0] == 3:  ## readings from the side buttons
-
                     # press left button
                     if d[1] == 1:
                         t_click = time.time()
@@ -252,9 +241,22 @@ class SpaceMouse:
 
                     # right button is for reset
                     if d[1] == 2:
-                        self._reset_state = 1
-                        self._enabled = False
-                        self._reset_internal_state()
+                        print('reset is not implemented')
+                        # self._reset_state = 1
+                        # self._enabled = False
+                        # self._reset_internal_state()
+            else:
+                self.x, self.y, self.z = 0.0, 0.0, 0.0
+                self.roll, self.pitch, self.yaw = 0.0, 0.0, 0.0
+
+            self._control =  [
+                self.x,
+                self.y,
+                self.z,
+                self.roll,
+                self.pitch,
+                self.yaw,
+            ]
 
     @property
     def control(self):

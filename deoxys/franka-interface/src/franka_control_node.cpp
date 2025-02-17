@@ -2,10 +2,12 @@
 
 #include <atomic>
 #include <iostream>
+#include <iomanip>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
+#include <chrono>
 
 #include <franka/exception.h>
 #include <franka/model.h>
@@ -216,12 +218,24 @@ int main(int argc, char **argv) {
   const int policy_rate = loaded_policy_rate;
   const int traj_rate = loaded_traj_rate;
 
+  // Create log file name
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+  std::tm utc_tm = *std::gmtime(&now_time_t);
+  utc_tm.tm_hour += 9;
+  mktime(&utc_tm);
+  std::stringstream ss;
+  ss << std::put_time(&utc_tm, "%Y%m%d_%H%M%S");
+  std::string log_name = "logs/" + ss.str() + "_arm.log";
+  std::cout << log_name << std::endl;
+
   // Initialize robot
   log_utils::initialize_logger(
       config["ARM_LOGGER"]["CONSOLE"]["LOGGER_NAME"].as<std::string>(),
       config["ARM_LOGGER"]["CONSOLE"]["LEVEL"].as<std::string>(),
       config["ARM_LOGGER"]["CONSOLE"]["USE"].as<bool>(),
-      config["ARM_LOGGER"]["FILE"]["LOGGER_NAME"].as<std::string>(),
+      // config["ARM_LOGGER"]["FILE"]["LOGGER_NAME"].as<std::string>(),
+      log_name,
       config["ARM_LOGGER"]["FILE"]["LEVEL"].as<std::string>(),
       config["ARM_LOGGER"]["FILE"]["USE"].as<bool>());
 
@@ -329,13 +343,13 @@ int main(int argc, char **argv) {
         msg = zmq_sub.recv(zmq_noblock);
         if (msg.length() == 0) {
           global_handler->no_msg_counter += int(global_handler->start);
-          global_handler->logger->debug("Counter {0}",
-                                        global_handler->no_msg_counter);
+	  //          global_handler->logger->debug("Counter {0}",
+	  //                                        global_handler->no_msg_counter);
           if (global_handler->no_msg_counter >= 20) {
             global_handler->running = false;
             global_handler->termination = true;
-            global_handler->logger->debug(
-                "No valid messages received in 20 steps");
+	    //            global_handler->logger->debug(
+	    //                "No valid messages received in 20 steps");
           }
           continue;
         }
@@ -356,12 +370,12 @@ int main(int argc, char **argv) {
             };
             if (!GetTrajInterpolatorType(
                     control_msg, control_command.traj_interpolator_type)) {
-              global_handler->logger->debug(
-                  "No traj interpolator is specified");
+	      //              global_handler->logger->debug(
+	      //                  "No traj interpolator is specified");
             };
             if (!GetStateEstimatorType(control_msg,
                                        control_command.state_estimator_type)) {
-              global_handler->logger->debug("No state estimator is specified");
+	      //              global_handler->logger->debug("No state estimator is specified");
             }
             if (control_msg.traj_interpolator_time_fraction() > 0.10) {
               global_handler->traj_interpolator_time_fraction =
@@ -528,14 +542,35 @@ int main(int argc, char **argv) {
           }
         } else {
           global_handler->no_msg_counter++;
-          global_handler->logger->info("Counter {0}",
-                                       global_handler->no_msg_counter);
+	  //          global_handler->logger->info("Counter {0}",
+          //                             global_handler->no_msg_counter);
         }
       }
     });
 
     // Main loop
     global_handler->logger->info("Deoxys starting");
+    global_handler->logger->debug("goal_x, goal_y, goal_z,\
+                                  O_T_EE(0), O_T_EE(1), O_T_EE(2), O_T_EE(3), O_T_EE(4), O_T_EE(5), O_T_EE(6), \
+                                  O_T_EE(7), O_T_EE(8), O_T_EE(9), O_T_EE(10), O_T_EE(11), O_T_EE(12), O_T_EE(13), \
+                                  O_T_EE(14), O_T_EE(15), O_T_EE_c(0), O_T_EE_c(1), O_T_EE_c(2), O_T_EE_c(3), \
+                                  O_T_EE_c(4), O_T_EE_c(5), O_T_EE_c(6), O_T_EE_c(7), O_T_EE_c(8), O_T_EE_c(9), \
+                                  O_T_EE_c(10), O_T_EE_c(11), O_T_EE_c(12), O_T_EE_c(13), O_T_EE_c(14), \
+                                  O_T_EE_c(15), O_T_EE_d(0), O_T_EE_d(1), O_T_EE_d(2), O_T_EE_d(3), \
+                                  O_T_EE_d(4), O_T_EE_d(5), O_T_EE_d(6), O_T_EE_d(7), O_T_EE_d(8), O_T_EE_d(9), \
+				  O_T_EE_d(10), O_T_EE_d(11), O_T_EE_d(12), O_T_EE_d(13), O_T_EE_d(14), \
+                                  O_T_EE_d(15), F_T_EE(0), F_T_EE(1), F_T_EE(2), F_T_EE(3), F_T_EE(4), \
+                                  F_T_EE(5), F_T_EE(6), F_T_EE(7), F_T_EE(8), F_T_EE(9), F_T_EE(10), F_T_EE(11), \
+                                  F_T_EE(12), F_T_EE(13), F_T_EE(14), F_T_EE(15), m_load, tau_J(0), tau_J(1) \
+                                  tau_J(2), tau_J(3), tau_J(4), tau_J(5), tau_J(6), tau_J_d(0), tau_J_d(1), \
+                                  tau_J_d(2), tau_J_d(3), tau_J_d(4), tau_J_d(5), tau_J_d(6), q(0), q(1), q(2), \
+                                  q(3) ,q(4), q(5), q(6), q_d(0), q_d(1), q_d(2), q_d(3), q_d(4), q_d(5), q_d(6), \
+                                  dq(0), dq(1), dq(2), dq(3), dq(4), dq(5), dq(6), dq_d(0), dq_d(1), dq_d(2), \
+                                  dq_d(3), dq_d(4), dq_d(5), dq_d(6), joint_contact(0), joint_contact(1), \
+                                  joint_contact(2), joint_contact(3), joint_contact(4), joint_contact(5), \
+                                  joint_contact(6), cartesian_contact(0), cartesian_contact(1),  \
+                                  cartesian_contact(2), cartesian_contact(3), cartesian_contact(4), \
+                                  cartesian_contact(5)");
     while (!global_handler->termination) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       // If controller_type changes, exit robot control loop and reinitialize.
